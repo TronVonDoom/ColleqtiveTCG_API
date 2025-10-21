@@ -95,6 +95,30 @@ def dict_from_row(row):
     return dict(zip(row.keys(), row))
 
 
+def to_camel_case(snake_str):
+    """Convert snake_case string to camelCase"""
+    components = snake_str.split('_')
+    return components[0] + ''.join(x.title() for x in components[1:])
+
+
+def convert_keys_to_camel_case(data):
+    """Recursively convert dictionary keys from snake_case to camelCase"""
+    if isinstance(data, dict):
+        new_dict = {}
+        for key, value in data.items():
+            # Don't convert keys that should stay as-is
+            if key in ['id', 'name', 'hp', 'level', 'number', 'artist', 'rarity', 'series', 'total', 'types', 'subtypes', 'supertypes']:
+                new_key = key
+            else:
+                new_key = to_camel_case(key)
+            new_dict[new_key] = convert_keys_to_camel_case(value)
+        return new_dict
+    elif isinstance(data, list):
+        return [convert_keys_to_camel_case(item) for item in data]
+    else:
+        return data
+
+
 @app.get("/")
 async def root():
     """API root endpoint"""
@@ -170,6 +194,9 @@ async def get_sets(
             # Build images from symbol_url and logo_url with hosted URLs
             build_set_images(s)
         
+        # Convert to camelCase for frontend compatibility
+        sets = [convert_keys_to_camel_case(s) for s in sets]
+        
         conn.close()
         
         return {
@@ -204,6 +231,9 @@ async def get_set(set_id: str):
             set_data['legalities'] = json.loads(set_data['legalities'])
         # Build images from symbol_url and logo_url with hosted URLs
         build_set_images(set_data)
+        
+        # Convert to camelCase for frontend compatibility
+        set_data = convert_keys_to_camel_case(set_data)
         
         conn.close()
         
@@ -290,6 +320,9 @@ async def get_cards(
             # Build images from image_small and image_large with hosted URLs
             build_card_images(card)
         
+        # Convert all cards to camelCase
+        cards = [convert_keys_to_camel_case(card) for card in cards]
+        
         conn.close()
         
         return {
@@ -335,6 +368,9 @@ async def get_card(card_id: str):
                     pass
         # Build images from image_small and image_large with hosted URLs
         build_card_images(card)
+        
+        # Convert snake_case keys to camelCase for frontend compatibility
+        card = convert_keys_to_camel_case(card)
         
         conn.close()
         
