@@ -30,18 +30,35 @@ DB_PATH = Path(__file__).parent / "pokemontcg.db"
 
 # Hosted image base (Hostinger)
 HOSTED_IMAGES_BASE = "https://lime-goat-951061.hostingersite.com/pokemon-tcg-data"
+CARD_BACK_PLACEHOLDER = f"{HOSTED_IMAGES_BASE}/images/card_back.png"
 
 
 def build_card_images(card_data):
-    """Build images object from card database columns with hosted URLs"""
+    """Build images object from card database columns with hosted URLs
+    
+    Card numbers are stored with leading zeros stripped in the database (e.g., "10" not "010").
+    We construct URLs like: /images/cards/sv2/10.png and /images/cards/sv2/10_hires.png
+    
+    If no image exists, frontend should fallback to: /images/card_back.png
+    """
     set_id = card_data.get('set_id', '')
     number = card_data.get('number', '')
     
     if set_id and number:
-        # Use hosted URLs
+        # Remove leading zeros from number for URL construction (e.g., "010" -> "10")
+        # This matches your Hostinger folder structure
+        clean_number = str(int(number)) if number.isdigit() else number
+        
+        # Use hosted URLs with clean number
         card_data['images'] = {
-            'small': f"{HOSTED_IMAGES_BASE}/images/cards/{set_id}/{number}.png",
-            'large': f"{HOSTED_IMAGES_BASE}/images/cards/{set_id}/{number}_hires.png"
+            'small': f"{HOSTED_IMAGES_BASE}/images/cards/{set_id}/{clean_number}.png",
+            'large': f"{HOSTED_IMAGES_BASE}/images/cards/{set_id}/{clean_number}_hires.png"
+        }
+    else:
+        # Fallback to card back if no set_id or number
+        card_data['images'] = {
+            'small': CARD_BACK_PLACEHOLDER,
+            'large': CARD_BACK_PLACEHOLDER
         }
     
     # Clean up the old database columns
@@ -361,14 +378,20 @@ def parse_card_id(card_id: str):
 
 @app.get("/cards/{card_id}/image/{size}")
 async def card_image_redirect(card_id: str, size: str):
-    """Redirect to hosted card image. size = small|large"""
+    """Redirect to hosted card image. size = small|large
+    
+    Example: /cards/sv2-10/image/small -> https://lime-goat-951061.hostingersite.com/pokemon-tcg-data/images/cards/sv2/10.png
+    """
     try:
         set_id, number = parse_card_id(card_id)
         if not set_id or not number:
             raise HTTPException(status_code=400, detail="Invalid card id format")
 
-        # normalize number (some numbers include '/'; replace)
-        filename = f"{number}.png" if size == 'small' else f"{number}_hires.png"
+        # Remove leading zeros from number (e.g., "010" -> "10")
+        clean_number = str(int(number)) if number.isdigit() else number.replace('/', '-')
+        
+        # Build filename
+        filename = f"{clean_number}.png" if size == 'small' else f"{clean_number}_hires.png"
         url = f"{HOSTED_IMAGES_BASE}/images/cards/{set_id}/{filename}"
 
         return RedirectResponse(url)
@@ -410,6 +433,15 @@ async def proxy_image(image_path: str):
         return RedirectResponse(image_url)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/card-back")
+async def card_back_placeholder():
+    """Redirect to Pokemon card back placeholder image.
+    
+    Use this when a card image is missing or unavailable.
+    """
+    return RedirectResponse(CARD_BACK_PLACEHOLDER)
 
 
 @app.get("/subtypes")
