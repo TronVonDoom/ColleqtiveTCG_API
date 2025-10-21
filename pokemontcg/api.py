@@ -32,6 +32,37 @@ DB_PATH = Path(__file__).parent / "pokemontcg.db"
 HOSTED_IMAGES_BASE = "https://lime-goat-951061.hostingersite.com/pokemon-tcg-data"
 
 
+def replace_image_urls(data, is_card=True):
+    """Replace pokemontcg.io image URLs with our hosted URLs"""
+    if not data:
+        return data
+    
+    if is_card:
+        # Card images: data has 'id', 'set_id', 'number', and 'images' dict
+        if 'images' in data and isinstance(data['images'], dict):
+            set_id = data.get('set_id', '')
+            number = data.get('number', '')
+            
+            if set_id and number:
+                # Replace with hosted URLs
+                data['images'] = {
+                    'small': f"{HOSTED_IMAGES_BASE}/images/cards/{set_id}/{number}.png",
+                    'large': f"{HOSTED_IMAGES_BASE}/images/cards/{set_id}/{number}_hires.png"
+                }
+    else:
+        # Set images: data has 'id' and 'images' dict with symbol/logo
+        if 'images' in data and isinstance(data['images'], dict):
+            set_id = data.get('id', '')
+            
+            if set_id:
+                data['images'] = {
+                    'symbol': f"{HOSTED_IMAGES_BASE}/images/sets/symbols/{set_id}_symbol.png",
+                    'logo': f"{HOSTED_IMAGES_BASE}/images/sets/logos/{set_id}_logo.png"
+                }
+    
+    return data
+
+
 def get_db():
     """Get database connection"""
     conn = sqlite3.connect(DB_PATH)
@@ -112,12 +143,14 @@ async def get_sets(
         
         sets = [dict_from_row(row) for row in cursor.fetchall()]
         
-        # Parse JSON fields
+        # Parse JSON fields and replace image URLs
         for s in sets:
             if s.get('images'):
                 s['images'] = json.loads(s['images'])
             if s.get('legalities'):
                 s['legalities'] = json.loads(s['legalities'])
+            # Replace with hosted URLs
+            replace_image_urls(s, is_card=False)
         
         conn.close()
         
@@ -148,11 +181,13 @@ async def get_set(set_id: str):
         
         set_data = dict_from_row(row)
         
-        # Parse JSON fields
+        # Parse JSON fields and replace image URLs
         if set_data.get('images'):
             set_data['images'] = json.loads(set_data['images'])
         if set_data.get('legalities'):
             set_data['legalities'] = json.loads(set_data['legalities'])
+        # Replace with hosted URLs
+        replace_image_urls(set_data, is_card=False)
         
         conn.close()
         
@@ -236,6 +271,8 @@ async def get_cards(
                         card[field] = json.loads(card[field])
                     except:
                         pass
+            # Replace with hosted URLs
+            replace_image_urls(card, is_card=True)
         
         conn.close()
         
@@ -280,6 +317,8 @@ async def get_card(card_id: str):
                     card[field] = json.loads(card[field])
                 except:
                     pass
+        # Replace with hosted URLs
+        replace_image_urls(card, is_card=True)
         
         conn.close()
         
