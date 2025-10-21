@@ -8,6 +8,7 @@ from typing import Optional, List
 import sqlite3
 import json
 from pathlib import Path
+from fastapi.responses import RedirectResponse
 
 app = FastAPI(
     title="Pokemon TCG API",
@@ -26,6 +27,9 @@ app.add_middleware(
 
 # Database path
 DB_PATH = Path(__file__).parent / "pokemontcg.db"
+
+# Hosted image base (Hostinger)
+HOSTED_IMAGES_BASE = "https://lime-goat-951061.hostingersite.com/pokemon-tcg-data"
 
 
 def get_db():
@@ -299,6 +303,56 @@ async def get_types():
         conn.close()
         
         return {"data": types}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def parse_card_id(card_id: str):
+    """Parse a card id like 'base1-4' into (set_id, number)"""
+    if '-' in card_id:
+        parts = card_id.split('-')
+        set_id = parts[0]
+        number = parts[-1]
+        return set_id, number
+    # Fallback: try to look up in DB
+    return None, None
+
+
+@app.get("/cards/{card_id}/image/{size}")
+async def card_image_redirect(card_id: str, size: str):
+    """Redirect to hosted card image. size = small|large"""
+    try:
+        set_id, number = parse_card_id(card_id)
+        if not set_id or not number:
+            raise HTTPException(status_code=400, detail="Invalid card id format")
+
+        # normalize number (some numbers include '/'; replace)
+        filename = f"{number}.png" if size == 'small' else f"{number}_hires.png"
+        url = f"{HOSTED_IMAGES_BASE}/images/cards/{set_id}/{filename}"
+
+        return RedirectResponse(url)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/sets/{set_id}/symbol")
+async def set_symbol_redirect(set_id: str):
+    """Redirect to hosted set symbol image"""
+    try:
+        url = f"{HOSTED_IMAGES_BASE}/images/sets/symbols/{set_id}_symbol.png"
+        return RedirectResponse(url)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/sets/{set_id}/logo")
+async def set_logo_redirect(set_id: str):
+    """Redirect to hosted set logo image"""
+    try:
+        url = f"{HOSTED_IMAGES_BASE}/images/sets/logos/{set_id}_logo.png"
+        return RedirectResponse(url)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
