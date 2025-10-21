@@ -35,18 +35,18 @@ HOSTED_IMAGES_BASE = "https://lime-goat-951061.hostingersite.com/pokemon-tcg-dat
 def build_card_images(card_data):
     """Build images object from card database columns with hosted URLs.
     
-    Strips leading zeros from card numbers (e.g., 010 -> 10) to match file naming.
+    Uses card numbers as-is to match file naming on server.
     Falls back to Pokemon card back placeholder if images don't exist.
     """
     set_id = card_data.get('set_id', '')
     number = card_data.get('number', '')
     
     if set_id and number:
-        # Strip leading zeros and handle special characters (e.g., "010" -> "10")
+        # Keep card number as-is - no leading zero stripping
         # Some cards have formats like "123/456" - just use the first part
-        clean_number = number.split('/')[0].lstrip('0') or '0'
+        clean_number = number.split('/')[0]
         
-        # Use hosted URLs with cleaned number
+        # Use hosted URLs with original number formatting
         card_data['images'] = {
             'small': f"{HOSTED_IMAGES_BASE}/images/cards/{set_id}/{clean_number}.png",
             'large': f"{HOSTED_IMAGES_BASE}/images/cards/{set_id}/{clean_number}_hires.png"
