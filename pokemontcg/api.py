@@ -8,8 +8,7 @@ from typing import Optional, List
 import sqlite3
 import json
 from pathlib import Path
-from fastapi.responses import RedirectResponse, Response
-import requests
+from fastapi.responses import RedirectResponse
 
 app = FastAPI(
     title="Pokemon TCG API",
@@ -401,24 +400,16 @@ async def set_logo_redirect(set_id: str):
 
 @app.get("/proxy-image/{image_path:path}")
 async def proxy_image(image_path: str):
-    """Proxy images from images.pokemontcg.io to avoid CORS issues.
+    """Redirect to Hostinger-hosted images. No CORS issues since images are on your domain.
 
-    Example: /proxy-image/base1/logo.png -> https://images.pokemontcg.io/base1/logo.png
+    Example: /proxy-image/base1/logo.png -> https://lime-goat-951061.hostingersite.com/pokemon-tcg-data/images/base1/logo.png
     """
     try:
-        image_url = f"https://images.pokemontcg.io/{image_path}"
-        resp = requests.get(image_url, timeout=10)
-        if resp.status_code != 200:
-            # Let the client see a 404 for missing images
-            raise HTTPException(status_code=404, detail="Image not found")
-
-        content_type = resp.headers.get("Content-Type", "image/png")
-        # Set a reasonable cache time for images
-        headers = {"Cache-Control": "public, max-age=86400"}
-
-        return Response(content=resp.content, media_type=content_type, headers=headers)
-    except requests.RequestException as exc:
-        raise HTTPException(status_code=502, detail=f"Error fetching image: {str(exc)}")
+        # Redirect to your Hostinger-hosted images instead of pokemontcg.io
+        image_url = f"{HOSTED_IMAGES_BASE}/images/{image_path}"
+        return RedirectResponse(image_url)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/subtypes")
