@@ -304,14 +304,26 @@ async def get_cards(
         
         # Parse JSON fields and build images
         for card in cards:
+            # Fetch types from the card_types relationship table
+            cursor.execute("SELECT type_name FROM card_types WHERE card_id = ?", (card['id'],))
+            type_rows = cursor.fetchall()
+            if type_rows:
+                card['types'] = [row[0] for row in type_rows]
+            
+            # Fetch subtypes from the card_subtypes relationship table
+            cursor.execute("SELECT subtype_name FROM card_subtypes WHERE card_id = ?", (card['id'],))
+            subtype_rows = cursor.fetchall()
+            if subtype_rows:
+                card['subtypes'] = [row[0] for row in subtype_rows]
+            
             for field in ['attacks', 'weaknesses', 'resistances', 'abilities', 'rules', 'legalities']:
                 if card.get(field):
                     try:
                         card[field] = json.loads(card[field])
                     except:
                         pass
-            # Parse list fields
-            for field in ['types', 'subtypes', 'retreat_cost']:
+            # Parse list fields (retreat_cost only, types/subtypes already handled above)
+            for field in ['retreat_cost']:
                 if card.get(field):
                     try:
                         card[field] = json.loads(card[field])
@@ -352,6 +364,18 @@ async def get_card(card_id: str):
         
         card = dict_from_row(row)
         
+        # Fetch types from the card_types relationship table
+        cursor.execute("SELECT type_name FROM card_types WHERE card_id = ?", (card_id,))
+        type_rows = cursor.fetchall()
+        if type_rows:
+            card['types'] = [row[0] for row in type_rows]
+        
+        # Fetch subtypes from the card_subtypes relationship table
+        cursor.execute("SELECT subtype_name FROM card_subtypes WHERE card_id = ?", (card_id,))
+        subtype_rows = cursor.fetchall()
+        if subtype_rows:
+            card['subtypes'] = [row[0] for row in subtype_rows]
+        
         # Parse JSON fields
         for field in ['attacks', 'weaknesses', 'resistances', 'abilities', 'rules', 'legalities']:
             if card.get(field):
@@ -359,8 +383,8 @@ async def get_card(card_id: str):
                     card[field] = json.loads(card[field])
                 except:
                     pass
-        # Parse list fields
-        for field in ['types', 'subtypes', 'retreat_cost']:
+        # Parse list fields (retreat_cost only, types/subtypes already handled above)
+        for field in ['retreat_cost']:
             if card.get(field):
                 try:
                     card[field] = json.loads(card[field])
