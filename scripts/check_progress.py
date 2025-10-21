@@ -1,11 +1,11 @@
 """
-Simple script to monitor the sync progress
+Simple script to monitor the sync progress for Pokemon TCG
 """
 import sqlite3
 import os
 from datetime import datetime
 
-DATABASE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'pokemon_tcg.db')
+DATABASE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'pokemontcg', 'pokemon_tcg.db')
 
 def check_progress():
     """Check current sync progress"""

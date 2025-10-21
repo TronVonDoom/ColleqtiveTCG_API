@@ -1,15 +1,28 @@
-# Pokemon TCG Database .gitignore
+# Colleqtive TCG API .gitignore
 
-# Database files
+# Database files (generated per-game)
+# Note: pokemontcg.db is included for Railway deployment
 *.db
 *.sqlite
 *.sqlite3
-pokemon_tcg.db
+!pokemontcg/pokemontcg.db
+pokemontcg/pokemon_tcg.db
+scryfall/*.db
 
-# Log files
-logs/
+# Log files (all modules)
+**/logs/
 *.log
-sync.log
+
+# Pokemon TCG - Image files (large directory - exclude all card images)
+pokemontcg/pokemon-tcg-data/images/cards/
+pokemontcg/pokemon-tcg-data/images/sets/
+
+# Pokemon TCG - But KEEP the placeholder card back images (important!)
+!pokemontcg/pokemon-tcg-data/images/card_back.png
+!pokemontcg/pokemon-tcg-data/images/card_back_hires.png
+
+# Pokemon TCG - Cloned data repository
+pokemontcg/pokemon-tcg-data/
 
 # Python
 __pycache__/
@@ -98,3 +111,7 @@ tmp/
 # Backup files
 *.bak
 *.backup
+
+# Test files
+test_*.py
+*_test.py
