@@ -29,7 +29,7 @@ app.add_middleware(
 DB_PATH = Path(__file__).parent / "pokemontcg.db"
 
 # Hosted image base (Hostinger)
-HOSTED_IMAGES_BASE = "https://lime-goat-951061.hostingersite.com/pokemon-tcg-data"
+HOSTED_IMAGES_BASE = "https://www.colleqtivetcg.com/tcg-images/pokemon"
 
 
 def build_card_images(card_data):
@@ -46,16 +46,16 @@ def build_card_images(card_data):
         # Some cards have formats like "123/456" - just use the first part
         clean_number = number.split('/')[0]
         
-        # Use hosted URLs with original number formatting
+        # Use hosted URLs with new structure: /tcg-images/pokemon/cards/{setId}/{size}/{number}.png
         card_data['images'] = {
-            'small': f"{HOSTED_IMAGES_BASE}/images/cards/{set_id}/{clean_number}.png",
-            'large': f"{HOSTED_IMAGES_BASE}/images/cards/{set_id}/{clean_number}_hires.png"
+            'small': f"{HOSTED_IMAGES_BASE}/cards/{set_id}/small/{clean_number}.png",
+            'large': f"{HOSTED_IMAGES_BASE}/cards/{set_id}/large/{clean_number}.png"
         }
     else:
         # Fallback to placeholder if no set_id or number
         card_data['images'] = {
-            'small': f"{HOSTED_IMAGES_BASE}/images/card_back.png",
-            'large': f"{HOSTED_IMAGES_BASE}/images/card_back.png"
+            'small': f"{HOSTED_IMAGES_BASE}/card_back.png",
+            'large': f"{HOSTED_IMAGES_BASE}/card_back.png"
         }
     
     # Clean up the old database columns
@@ -70,10 +70,10 @@ def build_set_images(set_data):
     set_id = set_data.get('id', '')
     
     if set_id:
-        # Use hosted URLs
+        # Use hosted URLs with new structure: /tcg-images/pokemon/sets/{setId}/{type}.png
         set_data['images'] = {
-            'symbol': f"{HOSTED_IMAGES_BASE}/images/sets/symbols/{set_id}_symbol.png",
-            'logo': f"{HOSTED_IMAGES_BASE}/images/sets/logos/{set_id}_logo.png"
+            'symbol': f"{HOSTED_IMAGES_BASE}/sets/{set_id}/symbol.png",
+            'logo': f"{HOSTED_IMAGES_BASE}/sets/{set_id}/logo.png"
         }
     
     # Clean up the old database columns
@@ -416,11 +416,11 @@ async def set_logo_redirect(set_id: str):
 async def proxy_image(image_path: str):
     """Redirect to Hostinger-hosted images. No CORS issues since images are on your domain.
 
-    Example: /proxy-image/base1/logo.png -> https://lime-goat-951061.hostingersite.com/pokemon-tcg-data/images/base1/logo.png
+    Example: /proxy-image/cards/base1/small/1.png -> https://www.colleqtivetcg.com/tcg-images/pokemon/cards/base1/small/1.png
     """
     try:
         # Redirect to your Hostinger-hosted images instead of pokemontcg.io
-        image_url = f"{HOSTED_IMAGES_BASE}/images/{image_path}"
+        image_url = f"{HOSTED_IMAGES_BASE}/{image_path}"
         return RedirectResponse(image_url)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

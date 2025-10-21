@@ -7,7 +7,7 @@ from pathlib import Path
 
 # Simulate what the API does
 DB_PATH = Path(__file__).parent.parent / "pokemon_tcg.db"
-HOSTED_IMAGES_BASE = "https://lime-goat-951061.hostingersite.com/pokemon-tcg-data"
+HOSTED_IMAGES_BASE = "https://www.colleqtivetcg.com/tcg-images/pokemon"
 
 def build_card_images(card_data):
     """Build images object from card database columns with hosted URLs"""
