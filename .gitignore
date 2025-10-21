@@ -1,0 +1,117 @@
+# Colleqtive TCG API .gitignore
+
+# Database files (generated per-game)
+# Note: pokemontcg.db is included for Railway deployment
+*.db
+*.sqlite
+*.sqlite3
+!pokemontcg/pokemontcg.db
+pokemontcg/pokemon_tcg.db
+scryfall/*.db
+
+# Log files (all modules)
+**/logs/
+*.log
+
+# Pokemon TCG - Image files (large directory - exclude all card images)
+pokemontcg/pokemon-tcg-data/images/cards/
+pokemontcg/pokemon-tcg-data/images/sets/
+
+# Pokemon TCG - But KEEP the placeholder card back images (important!)
+!pokemontcg/pokemon-tcg-data/images/card_back.png
+!pokemontcg/pokemon-tcg-data/images/card_back_hires.png
+
+# Pokemon TCG - Cloned data repository
+pokemontcg/pokemon-tcg-data/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Environment variables
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Backup files
+*.bak
+*.backup
+
+# Test files
+test_*.py
+*_test.py
