@@ -304,31 +304,68 @@ async def get_cards(
         
         # Parse JSON fields and build images
         for card in cards:
+            card_id = card['id']
+            
             # Fetch types from the card_types relationship table
-            cursor.execute("SELECT type_name FROM card_types WHERE card_id = ?", (card['id'],))
+            cursor.execute("SELECT type_name FROM card_types WHERE card_id = ?", (card_id,))
             type_rows = cursor.fetchall()
             if type_rows:
                 card['types'] = [row[0] for row in type_rows]
             
             # Fetch subtypes from the card_subtypes relationship table
-            cursor.execute("SELECT subtype_name FROM card_subtypes WHERE card_id = ?", (card['id'],))
+            cursor.execute("SELECT subtype_name FROM card_subtypes WHERE card_id = ?", (card_id,))
             subtype_rows = cursor.fetchall()
             if subtype_rows:
                 card['subtypes'] = [row[0] for row in subtype_rows]
             
-            for field in ['attacks', 'weaknesses', 'resistances', 'abilities', 'rules', 'legalities']:
+            # Fetch attacks from attacks table
+            cursor.execute("SELECT name, cost, converted_energy_cost, damage, text FROM attacks WHERE card_id = ? ORDER BY id", (card_id,))
+            attack_rows = cursor.fetchall()
+            if attack_rows:
+                card['attacks'] = []
+                for attack_row in attack_rows:
+                    attack_dict = {
+                        'name': attack_row[0],
+                        'cost': json.loads(attack_row[1]) if attack_row[1] else [],
+                        'convertedEnergyCost': attack_row[2],
+                        'damage': attack_row[3],
+                        'text': attack_row[4]
+                    }
+                    card['attacks'].append(attack_dict)
+            
+            # Fetch abilities from abilities table
+            cursor.execute("SELECT name, text, ability_type FROM abilities WHERE card_id = ? ORDER BY id", (card_id,))
+            ability_rows = cursor.fetchall()
+            if ability_rows:
+                card['abilities'] = []
+                for ability_row in ability_rows:
+                    ability_dict = {
+                        'name': ability_row[0],
+                        'text': ability_row[1],
+                        'type': ability_row[2]
+                    }
+                    card['abilities'].append(ability_dict)
+            
+            # Fetch weaknesses from weaknesses table
+            cursor.execute("SELECT type, value FROM weaknesses WHERE card_id = ?", (card_id,))
+            weakness_rows = cursor.fetchall()
+            if weakness_rows:
+                card['weaknesses'] = [{'type': row[0], 'value': row[1]} for row in weakness_rows]
+            
+            # Fetch resistances from resistances table
+            cursor.execute("SELECT type, value FROM resistances WHERE card_id = ?", (card_id,))
+            resistance_rows = cursor.fetchall()
+            if resistance_rows:
+                card['resistances'] = [{'type': row[0], 'value': row[1]} for row in resistance_rows]
+            
+            # Parse JSON fields from card table
+            for field in ['rules', 'retreat_cost', 'national_pokedex_numbers', 'evolves_to']:
                 if card.get(field):
                     try:
                         card[field] = json.loads(card[field])
                     except:
                         pass
-            # Parse list fields (retreat_cost only, types/subtypes already handled above)
-            for field in ['retreat_cost']:
-                if card.get(field):
-                    try:
-                        card[field] = json.loads(card[field])
-                    except:
-                        pass
+            
             # Build images from image_small and image_large with hosted URLs
             build_card_images(card)
         
@@ -376,15 +413,48 @@ async def get_card(card_id: str):
         if subtype_rows:
             card['subtypes'] = [row[0] for row in subtype_rows]
         
-        # Parse JSON fields
-        for field in ['attacks', 'weaknesses', 'resistances', 'abilities', 'rules', 'legalities']:
-            if card.get(field):
-                try:
-                    card[field] = json.loads(card[field])
-                except:
-                    pass
-        # Parse list fields (retreat_cost only, types/subtypes already handled above)
-        for field in ['retreat_cost']:
+        # Fetch attacks from attacks table
+        cursor.execute("SELECT name, cost, converted_energy_cost, damage, text FROM attacks WHERE card_id = ? ORDER BY id", (card_id,))
+        attack_rows = cursor.fetchall()
+        if attack_rows:
+            card['attacks'] = []
+            for attack_row in attack_rows:
+                attack_dict = {
+                    'name': attack_row[0],
+                    'cost': json.loads(attack_row[1]) if attack_row[1] else [],
+                    'convertedEnergyCost': attack_row[2],
+                    'damage': attack_row[3],
+                    'text': attack_row[4]
+                }
+                card['attacks'].append(attack_dict)
+        
+        # Fetch abilities from abilities table
+        cursor.execute("SELECT name, text, ability_type FROM abilities WHERE card_id = ? ORDER BY id", (card_id,))
+        ability_rows = cursor.fetchall()
+        if ability_rows:
+            card['abilities'] = []
+            for ability_row in ability_rows:
+                ability_dict = {
+                    'name': ability_row[0],
+                    'text': ability_row[1],
+                    'type': ability_row[2]
+                }
+                card['abilities'].append(ability_dict)
+        
+        # Fetch weaknesses from weaknesses table
+        cursor.execute("SELECT type, value FROM weaknesses WHERE card_id = ?", (card_id,))
+        weakness_rows = cursor.fetchall()
+        if weakness_rows:
+            card['weaknesses'] = [{'type': row[0], 'value': row[1]} for row in weakness_rows]
+        
+        # Fetch resistances from resistances table
+        cursor.execute("SELECT type, value FROM resistances WHERE card_id = ?", (card_id,))
+        resistance_rows = cursor.fetchall()
+        if resistance_rows:
+            card['resistances'] = [{'type': row[0], 'value': row[1]} for row in resistance_rows]
+        
+        # Parse JSON fields (rules, legalities, retreat_cost, etc.)
+        for field in ['rules', 'retreat_cost', 'national_pokedex_numbers', 'evolves_to']:
             if card.get(field):
                 try:
                     card[field] = json.loads(card[field])
