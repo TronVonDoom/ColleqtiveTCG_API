@@ -130,6 +130,8 @@ async def root():
             "card_by_id": "/cards/{card_id}",
             "sets": "/sets",
             "set_by_id": "/sets/{set_id}",
+            "pokemon_expansions": "/pokemon/expansions",
+            "pokemon_expansion_by_id": "/pokemon/expansions/{set_id}",
             "types": "/types",
             "subtypes": "/subtypes",
             "supertypes": "/supertypes",
@@ -242,6 +244,21 @@ async def get_set(set_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/pokemon/expansions")
+async def get_pokemon_expansions(
+    page: int = Query(1, ge=1, description="Page number"),
+    pageSize: int = Query(10, ge=1, le=250, description="Number of sets per page")
+):
+    """Get Pokemon TCG expansions (alias for /sets endpoint)"""
+    return await get_sets(page=page, pageSize=pageSize)
+
+
+@app.get("/pokemon/expansions/{set_id}")
+async def get_pokemon_expansion(set_id: str):
+    """Get a specific Pokemon TCG expansion by ID (alias for /sets/{set_id} endpoint)"""
+    return await get_set(set_id=set_id)
 
 
 @app.get("/cards")
