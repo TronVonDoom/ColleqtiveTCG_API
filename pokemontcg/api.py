@@ -366,6 +366,16 @@ async def get_cards(
                     except:
                         pass
             
+            # Fetch set information
+            set_id = card.get('set_id')
+            if set_id:
+                cursor.execute("SELECT * FROM sets WHERE id = ?", (set_id,))
+                set_row = cursor.fetchone()
+                if set_row:
+                    set_data = dict_from_row(set_row)
+                    build_set_images(set_data)
+                    card['set'] = convert_keys_to_camel_case(set_data)
+            
             # Build images from image_small and image_large with hosted URLs
             build_card_images(card)
         
@@ -460,6 +470,17 @@ async def get_card(card_id: str):
                     card[field] = json.loads(card[field])
                 except:
                     pass
+        
+        # Fetch set information
+        set_id = card.get('set_id')
+        if set_id:
+            cursor.execute("SELECT * FROM sets WHERE id = ?", (set_id,))
+            set_row = cursor.fetchone()
+            if set_row:
+                set_data = dict_from_row(set_row)
+                build_set_images(set_data)
+                card['set'] = convert_keys_to_camel_case(set_data)
+        
         # Build images from image_small and image_large with hosted URLs
         build_card_images(card)
         
