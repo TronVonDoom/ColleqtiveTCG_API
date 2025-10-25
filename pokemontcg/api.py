@@ -29,7 +29,7 @@ app.add_middleware(
 DB_PATH = Path(__file__).parent / "pokemontcg.db"
 
 # Hosted image base (Hostinger)
-HOSTED_IMAGES_BASE = "https://www.colleqtivetcg.com/tcg-images/pokemon"
+HOSTED_IMAGES_BASE = "https://colleqtivetcg.com/tcg-images/pokemon"
 
 
 def build_card_images(card_data):
