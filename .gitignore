@@ -24,6 +24,12 @@ pokemontcg/pokemon-tcg-data/images/sets/
 # Pokemon TCG - Cloned data repository
 pokemontcg/pokemon-tcg-data/
 
+# Downloaded card images (PNG and WebP) - exclude from git (too large)
+tcg-images-download/
+
+# Image backups - exclude from git (too large)
+backups/
+
 # Python
 __pycache__/
 *.py[cod]

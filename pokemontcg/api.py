@@ -29,7 +29,7 @@ app.add_middleware(
 DB_PATH = Path(__file__).parent / "pokemontcg.db"
 
 # Hosted image base (Hostinger)
-HOSTED_IMAGES_BASE = "https://colleqtivetcg.com/tcg-images/pokemon"
+HOSTED_IMAGES_BASE = "https://www.colleqtivetcg.com/tcg-images/pokemon"
 
 
 def build_card_images(card_data):
@@ -46,16 +46,16 @@ def build_card_images(card_data):
         # Some cards have formats like "123/456" - just use the first part
         clean_number = number.split('/')[0]
         
-        # Use hosted URLs with new structure: /tcg-images/pokemon/cards/{setId}/{size}/{number}.png
+        # Use hosted URLs with new structure: /tcg-images/pokemon/cards/{setId}/{size}/{number}.webp
         card_data['images'] = {
-            'small': f"{HOSTED_IMAGES_BASE}/cards/{set_id}/small/{clean_number}.png",
-            'large': f"{HOSTED_IMAGES_BASE}/cards/{set_id}/large/{clean_number}.png"
+            'small': f"{HOSTED_IMAGES_BASE}/cards/{set_id}/small/{clean_number}.webp",
+            'large': f"{HOSTED_IMAGES_BASE}/cards/{set_id}/large/{clean_number}.webp"
         }
     else:
         # Fallback to placeholder if no set_id or number
         card_data['images'] = {
-            'small': f"{HOSTED_IMAGES_BASE}/card_back.png",
-            'large': f"{HOSTED_IMAGES_BASE}/card_back.png"
+            'small': f"{HOSTED_IMAGES_BASE}/card_back.webp",
+            'large': f"{HOSTED_IMAGES_BASE}/card_back.webp"
         }
     
     # Clean up the old database columns
@@ -70,10 +70,10 @@ def build_set_images(set_data):
     set_id = set_data.get('id', '')
     
     if set_id:
-        # Use hosted URLs with new structure: /tcg-images/pokemon/sets/{setId}/{type}.png
+        # Use hosted URLs with new structure: /tcg-images/pokemon/sets/{setId}/{type}.webp
         set_data['images'] = {
-            'symbol': f"{HOSTED_IMAGES_BASE}/sets/{set_id}/symbol.png",
-            'logo': f"{HOSTED_IMAGES_BASE}/sets/{set_id}/logo.png"
+            'symbol': f"{HOSTED_IMAGES_BASE}/sets/{set_id}/symbol.webp",
+            'logo': f"{HOSTED_IMAGES_BASE}/sets/{set_id}/logo.webp"
         }
     
     # Clean up the old database columns
