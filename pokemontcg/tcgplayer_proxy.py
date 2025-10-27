@@ -72,7 +72,8 @@ async def get_tcgplayer_products(group_id: int):
         return cached_data
     
     try:
-        data = await fetch_from_tcgcsv(f'https://tcgcsv.com/tcgplayer/3/groups/{group_id}/products')
+        # Correct TCGCSV format: /tcgplayer/{categoryId}/{groupId}/products
+        data = await fetch_from_tcgcsv(f'https://tcgcsv.com/tcgplayer/3/{group_id}/products')
         tcgplayer_cache[cache_key] = (data, datetime.now())
         return data
     except httpx.HTTPStatusError as e:
@@ -98,7 +99,8 @@ async def get_tcgplayer_prices(group_id: int):
         return cached_data
     
     try:
-        data = await fetch_from_tcgcsv(f'https://tcgcsv.com/tcgplayer/3/groups/{group_id}/prices')
+        # Correct TCGCSV format: /tcgplayer/{categoryId}/{groupId}/prices
+        data = await fetch_from_tcgcsv(f'https://tcgcsv.com/tcgplayer/3/{group_id}/prices')
         tcgplayer_cache[cache_key] = (data, datetime.now())
         return data
     except httpx.HTTPStatusError as e:
