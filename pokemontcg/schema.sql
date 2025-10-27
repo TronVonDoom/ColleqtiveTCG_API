@@ -158,6 +158,42 @@ CREATE TABLE resistances (
 
 CREATE INDEX idx_resistances_card_id ON resistances(card_id);
 
+-- Card variants table (for different printings/finishes of the same card)
+CREATE TABLE card_variants (
+    id SERIAL PRIMARY KEY,
+    card_id VARCHAR NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+    variant_type VARCHAR NOT NULL, -- 'Normal', 'Holofoil', 'Reverse Holofoil', '1st Edition', etc.
+    tcgplayer_product_id INTEGER UNIQUE,
+    tcgplayer_url VARCHAR,
+    tcgplayer_sku_id INTEGER,
+    
+    -- Pricing data specific to this variant
+    market_price FLOAT,
+    low_price FLOAT,
+    mid_price FLOAT,
+    high_price FLOAT,
+    direct_low_price FLOAT,
+    
+    -- Cardmarket pricing for this variant
+    cardmarket_url VARCHAR,
+    cardmarket_avg_price FLOAT,
+    cardmarket_low_price FLOAT,
+    cardmarket_trend_price FLOAT,
+    
+    -- Availability and metadata
+    is_available BOOLEAN DEFAULT TRUE,
+    last_price_update TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE(card_id, variant_type)
+);
+
+CREATE INDEX idx_card_variants_card_id ON card_variants(card_id);
+CREATE INDEX idx_card_variants_type ON card_variants(variant_type);
+CREATE INDEX idx_card_variants_tcgplayer_product_id ON card_variants(tcgplayer_product_id);
+CREATE INDEX idx_card_variants_market_price ON card_variants(market_price);
+
 -- Sync status table
 CREATE TABLE sync_status (
     id SERIAL PRIMARY KEY,
@@ -221,3 +257,32 @@ SELECT
 FROM sets s
 LEFT JOIN cards c ON s.id = c.set_id
 GROUP BY s.id, s.name, s.series, s.total;
+
+-- View: Cards with all variants
+CREATE VIEW cards_with_variants AS
+SELECT 
+    c.id,
+    c.name,
+    c.set_id,
+    s.name as set_name,
+    c.number,
+    c.rarity,
+    c.image_small,
+    c.image_large,
+    json_agg(
+        json_build_object(
+            'id', cv.id,
+            'variant_type', cv.variant_type,
+            'market_price', cv.market_price,
+            'low_price', cv.low_price,
+            'mid_price', cv.mid_price,
+            'high_price', cv.high_price,
+            'tcgplayer_url', cv.tcgplayer_url,
+            'is_available', cv.is_available,
+            'last_price_update', cv.last_price_update
+        ) ORDER BY cv.market_price DESC
+    ) FILTER (WHERE cv.id IS NOT NULL) as variants
+FROM cards c
+JOIN sets s ON c.set_id = s.id
+LEFT JOIN card_variants cv ON c.id = cv.card_id
+GROUP BY c.id, c.name, c.set_id, s.name, c.number, c.rarity, c.image_small, c.image_large;

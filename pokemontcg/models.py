@@ -129,9 +129,49 @@ class Card(Base):
     abilities = relationship('Ability', back_populates='card', cascade='all, delete-orphan')
     weaknesses = relationship('Weakness', back_populates='card', cascade='all, delete-orphan')
     resistances = relationship('Resistance', back_populates='card', cascade='all, delete-orphan')
+    variants = relationship('CardVariant', back_populates='card', cascade='all, delete-orphan')
     
     def __repr__(self):
         return f"<Card(id='{self.id}', name='{self.name}')>"
+
+
+class CardVariant(Base):
+    """Card variants (different printings/finishes of the same card)"""
+    __tablename__ = 'card_variants'
+    
+    id = Column(Integer, primary_key=True)
+    card_id = Column(String, ForeignKey('cards.id', ondelete='CASCADE'), nullable=False)
+    
+    # Variant details
+    variant_type = Column(String, nullable=False)  # 'Normal', 'Holofoil', 'Reverse Holofoil', etc.
+    tcgplayer_product_id = Column(Integer, unique=True)
+    tcgplayer_url = Column(String)
+    tcgplayer_sku_id = Column(Integer)
+    
+    # Pricing (TCGPlayer USD)
+    market_price = Column(Float)
+    low_price = Column(Float)
+    mid_price = Column(Float)
+    high_price = Column(Float)
+    direct_low_price = Column(Float)
+    
+    # Pricing (Cardmarket EUR)
+    cardmarket_url = Column(String)
+    cardmarket_avg_price = Column(Float)
+    cardmarket_low_price = Column(Float)
+    cardmarket_trend_price = Column(Float)
+    
+    # Metadata
+    is_available = Column(Boolean, default=True)
+    last_price_update = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    card = relationship('Card', back_populates='variants')
+    
+    def __repr__(self):
+        return f"<CardVariant(card_id='{self.card_id}', type='{self.variant_type}', price=${self.market_price})>"
 
 
 class Attack(Base):

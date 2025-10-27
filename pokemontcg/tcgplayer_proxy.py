@@ -260,3 +260,130 @@ async def get_unmapped_cards(set_id: Optional[str] = None, limit: int = 100):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching unmapped cards: {str(e)}")
+
+
+@router.get("/card-variants/{group_id}/{card_name}")
+async def get_card_variants(group_id: int, card_name: str, card_number: Optional[str] = None):
+    """
+    Get all variants (Normal, Holofoil, Reverse Holofoil, etc.) for a specific card
+    Returns all TCGplayer products that match the card name with their individual pricing
+    """
+    try:
+        # Fetch all products for this set
+        products_response = await get_tcgplayer_products(group_id)
+        products = products_response.get('results', [])
+        
+        if not products:
+            return {
+                "card_name": card_name,
+                "card_number": card_number,
+                "variants": []
+            }
+        
+        # Fetch all prices for this set
+        prices_response = await get_tcgplayer_prices(group_id)
+        prices = prices_response.get('results', [])
+        
+        # Create a price lookup map
+        price_map = {p['productId']: p for p in prices}
+        
+        # Normalize card name for matching
+        def normalize_name(name):
+            return name.lower().replace('-', ' ').replace("'", "").replace('.', '').strip()
+        
+        search_name = normalize_name(card_name)
+        
+        # Find all products that match this card
+        matching_products = []
+        
+        for product in products:
+            product_name = normalize_name(product['name'].split('-')[0].strip())
+            
+            # Check if names match
+            name_matches = product_name == search_name or search_name in product_name
+            
+            # If card number provided, verify it matches
+            if card_number and product.get('extendedData'):
+                number_data = next((d for d in product['extendedData'] if d['name'] == 'Number'), None)
+                if number_data and number_data.get('value') != card_number:
+                    continue
+            
+            if name_matches:
+                # Get pricing for this variant
+                pricing = price_map.get(product['productId'])
+                
+                # Extract variant type from subTypeName in pricing
+                variant_type = pricing.get('subTypeName', 'Normal') if pricing else 'Unknown'
+                
+                matching_products.append({
+                    'product_id': product['productId'],
+                    'name': product['name'],
+                    'url': product.get('url', f"https://www.tcgplayer.com/product/{product['productId']}"),
+                    'image_url': product.get('imageUrl'),
+                    'variant_type': variant_type,
+                    'pricing': {
+                        'market_price': pricing.get('marketPrice'),
+                        'low_price': pricing.get('lowPrice'),
+                        'mid_price': pricing.get('midPrice'),
+                        'high_price': pricing.get('highPrice'),
+                        'direct_low_price': pricing.get('directLowPrice'),
+                    } if pricing else None,
+                    'extended_data': product.get('extendedData', [])
+                })
+        
+        # Sort by market price (highest to lowest)
+        matching_products.sort(
+            key=lambda x: x['pricing']['market_price'] if x['pricing'] and x['pricing']['market_price'] else 0,
+            reverse=True
+        )
+        
+        return {
+            "card_name": card_name,
+            "card_number": card_number,
+            "group_id": group_id,
+            "total_variants": len(matching_products),
+            "variants": matching_products
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching card variants: {str(e)}")
+
+
+@router.get("/card-variants-by-set/{set_id}/{card_number}")
+async def get_card_variants_by_set(set_id: str, card_number: str):
+    """
+    Get all variants for a card by set ID and card number
+    This is a convenience endpoint that combines set mapping lookup with variant search
+    """
+    try:
+        import json
+        from pathlib import Path
+        
+        # Load the set mapping
+        mapping_path = Path(__file__).parent.parent / "data" / "pokemon" / "tcgplayer-set-mapping.json"
+        with open(mapping_path, 'r') as f:
+            set_mapping = json.load(f)
+        
+        if set_id not in set_mapping:
+            raise HTTPException(status_code=404, detail=f"Set {set_id} not found in mapping")
+        
+        # Load card data to get the card name
+        cards_path = Path(__file__).parent.parent / "data" / "pokemon" / "cards" / "en" / f"{set_id}.json"
+        with open(cards_path, 'r') as f:
+            cards = json.load(f)
+        
+        card = next((c for c in cards if c.get('number') == card_number), None)
+        if not card:
+            raise HTTPException(status_code=404, detail=f"Card {card_number} not found in set {set_id}")
+        
+        group_id = set_mapping[set_id]['tcgplayerGroupId']
+        
+        # Get variants using the card name and number
+        return await get_card_variants(group_id, card['name'], card_number)
+        
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=f"Data file not found: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching card variants: {str(e)}")
