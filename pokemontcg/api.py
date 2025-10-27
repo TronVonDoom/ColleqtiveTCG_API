@@ -46,16 +46,18 @@ def build_card_images(card_data):
         # Some cards have formats like "123/456" - just use the first part
         clean_number = number.split('/')[0]
         
-        # Use hosted URLs with new structure: /tcg-images/pokemon/cards/{setId}/{size}/{number}.webp
+        # Images are now stored directly in set folder without /small/ or /large/ subdirectories
+        # Path structure: /tcg-images/pokemon/en/cards/{setId}/{number}.webp
+        image_url = f"{HOSTED_IMAGES_BASE}/en/cards/{set_id}/{clean_number}.webp"
         card_data['images'] = {
-            'small': f"{HOSTED_IMAGES_BASE}/cards/{set_id}/small/{clean_number}.webp",
-            'large': f"{HOSTED_IMAGES_BASE}/cards/{set_id}/large/{clean_number}.webp"
+            'small': image_url,
+            'large': image_url  # Same file for both since we don't have separate sizes anymore
         }
     else:
         # Fallback to placeholder if no set_id or number
         card_data['images'] = {
-            'small': f"{HOSTED_IMAGES_BASE}/card_back.webp",
-            'large': f"{HOSTED_IMAGES_BASE}/card_back.webp"
+            'small': f"{HOSTED_IMAGES_BASE}/en/cards/placeholder-card-back.webp",
+            'large': f"{HOSTED_IMAGES_BASE}/en/cards/placeholder-card-back.webp"
         }
     
     # Clean up the old database columns
@@ -70,10 +72,10 @@ def build_set_images(set_data):
     set_id = set_data.get('id', '')
     
     if set_id:
-        # Use hosted URLs with new structure: /tcg-images/pokemon/sets/{setId}/{type}.webp
+        # Images are stored in /tcg-images/pokemon/en/sets/{setId}/{type}.webp
         set_data['images'] = {
-            'symbol': f"{HOSTED_IMAGES_BASE}/sets/{set_id}/symbol.webp",
-            'logo': f"{HOSTED_IMAGES_BASE}/sets/{set_id}/logo.webp"
+            'symbol': f"{HOSTED_IMAGES_BASE}/en/sets/{set_id}/symbol.webp",
+            'logo': f"{HOSTED_IMAGES_BASE}/en/sets/{set_id}/logo.webp"
         }
     
     # Clean up the old database columns
