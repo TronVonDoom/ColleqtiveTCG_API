@@ -24,13 +24,21 @@ def is_cache_valid(cache_key: str) -> bool:
 async def fetch_from_tcgcsv(url: str) -> dict:
     """Fetch data from TCGCSV with proper headers"""
     async with httpx.AsyncClient() as client:
-        response = await client.get(
-            url,
-            headers={'User-Agent': 'ColleqtiveTCG/1.0'},
-            timeout=30.0
-        )
-        response.raise_for_status()
-        return response.json()
+        try:
+            response = await client.get(
+                url,
+                headers={'User-Agent': 'ColleqtiveTCG/1.0'},
+                timeout=30.0
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            print(f"❌ TCGCSV HTTP error {e.response.status_code} for URL: {url}")
+            print(f"   Response: {e.response.text[:500]}")  # First 500 chars of response
+            raise
+        except Exception as e:
+            print(f"❌ Error fetching from TCGCSV: {str(e)}")
+            raise
 
 @router.get("/groups")
 async def get_tcgplayer_groups():
@@ -67,7 +75,14 @@ async def get_tcgplayer_products(group_id: int):
         data = await fetch_from_tcgcsv(f'https://tcgcsv.com/tcgplayer/3/groups/{group_id}/products')
         tcgplayer_cache[cache_key] = (data, datetime.now())
         return data
+    except httpx.HTTPStatusError as e:
+        # If TCGCSV returns 404, it means no products for this group
+        if e.response.status_code == 404:
+            print(f"⚠️ No products found for group {group_id} on TCGCSV")
+            return {"results": []}
+        raise HTTPException(status_code=e.response.status_code, detail=f"TCGCSV error: {str(e)}")
     except Exception as e:
+        print(f"❌ Error fetching products for group {group_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching products: {str(e)}")
 
 @router.get("/groups/{group_id}/prices")
@@ -86,5 +101,12 @@ async def get_tcgplayer_prices(group_id: int):
         data = await fetch_from_tcgcsv(f'https://tcgcsv.com/tcgplayer/3/groups/{group_id}/prices')
         tcgplayer_cache[cache_key] = (data, datetime.now())
         return data
+    except httpx.HTTPStatusError as e:
+        # If TCGCSV returns 404, it means no prices for this group
+        if e.response.status_code == 404:
+            print(f"⚠️ No prices found for group {group_id} on TCGCSV")
+            return {"results": []}
+        raise HTTPException(status_code=e.response.status_code, detail=f"TCGCSV error: {str(e)}")
     except Exception as e:
+        print(f"❌ Error fetching prices for group {group_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching prices: {str(e)}")
