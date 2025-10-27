@@ -309,11 +309,20 @@ async def get_cards(
         offset = (page - 1) * pageSize
         
         # Get cards - use DISTINCT to avoid duplicates from joins
+        # Sort by set_id and then by number numerically (extract leading digits)
         cards_query = f"""
             SELECT DISTINCT c.* FROM {table_ref} 
             {join_sql}
             WHERE {where_sql}
-            ORDER BY c.set_id, c.number
+            ORDER BY c.set_id, 
+                     CAST(
+                         CASE 
+                             WHEN c.number GLOB '[0-9]*' 
+                             THEN SUBSTR(c.number, 1, INSTR(c.number || '/', '/') - 1)
+                             ELSE c.number 
+                         END AS INTEGER
+                     ),
+                     c.number
             LIMIT ? OFFSET ?
         """
         cursor.execute(cards_query, params + [pageSize, offset])
