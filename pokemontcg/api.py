@@ -266,41 +266,57 @@ async def get_cards(
         where_clauses = []
         params = []
         
+        # Determine if we need to join with card_types or card_subtypes
+        needs_type_join = type is not None
+        needs_subtype_join = subtype is not None
+        
+        # Base table reference
+        table_ref = "cards c"
+        joins = []
+        
+        if needs_type_join:
+            joins.append("INNER JOIN card_types ct ON c.id = ct.card_id")
+            where_clauses.append("ct.type_name = ?")
+            params.append(type)
+        
+        if needs_subtype_join:
+            joins.append("INNER JOIN card_subtypes cs ON c.id = cs.card_id")
+            where_clauses.append("cs.subtype_name = ?")
+            params.append(subtype)
+        
         if name:
-            where_clauses.append("name LIKE ?")
+            where_clauses.append("c.name LIKE ?")
             params.append(f"%{name}%")
         if supertype:
-            where_clauses.append("supertype = ?")
+            where_clauses.append("c.supertype = ?")
             params.append(supertype)
-        if subtype:
-            where_clauses.append("subtypes LIKE ?")
-            params.append(f"%{subtype}%")
         if set_id:
-            where_clauses.append("set_id = ?")
+            where_clauses.append("c.set_id = ?")
             params.append(set_id)
         if rarity:
-            where_clauses.append("rarity = ?")
+            where_clauses.append("c.rarity = ?")
             params.append(rarity)
-        if type:
-            where_clauses.append("types LIKE ?")
-            params.append(f"%{type}%")
         
         where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+        join_sql = " ".join(joins) if joins else ""
         
-        # Get total count
-        cursor.execute(f"SELECT COUNT(*) FROM cards WHERE {where_sql}", params)
+        # Get total count - use DISTINCT since joins might create duplicates
+        count_query = f"SELECT COUNT(DISTINCT c.id) FROM {table_ref} {join_sql} WHERE {where_sql}"
+        cursor.execute(count_query, params)
         total_count = cursor.fetchone()[0]
         
         # Calculate offset
         offset = (page - 1) * pageSize
         
-        # Get cards
-        cursor.execute(f"""
-            SELECT * FROM cards 
+        # Get cards - use DISTINCT to avoid duplicates from joins
+        cards_query = f"""
+            SELECT DISTINCT c.* FROM {table_ref} 
+            {join_sql}
             WHERE {where_sql}
-            ORDER BY set_id, number
+            ORDER BY c.set_id, c.number
             LIMIT ? OFFSET ?
-        """, params + [pageSize, offset])
+        """
+        cursor.execute(cards_query, params + [pageSize, offset])
         
         cards = [dict_from_row(row) for row in cursor.fetchall()]
         
