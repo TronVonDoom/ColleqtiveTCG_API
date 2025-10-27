@@ -255,7 +255,8 @@ async def get_cards(
     subtype: Optional[str] = Query(None, description="Filter by subtype"),
     set_id: Optional[str] = Query(None, description="Filter by set ID"),
     rarity: Optional[str] = Query(None, description="Filter by rarity"),
-    type: Optional[str] = Query(None, description="Filter by Pokemon type")
+    type: Optional[str] = Query(None, description="Filter by Pokemon type"),
+    sort: Optional[str] = Query("newest", description="Sort order: newest, oldest, name-asc, name-desc")
 ):
     """Get Pokemon TCG cards with filtering and pagination"""
     try:
@@ -308,21 +309,42 @@ async def get_cards(
         # Calculate offset
         offset = (page - 1) * pageSize
         
+        # Determine ORDER BY clause based on sort parameter
+        if sort == "oldest":
+            # Oldest sets first, then by card number
+            order_by = """ORDER BY c.set_id ASC, 
+                         CAST(
+                             CASE 
+                                 WHEN c.number GLOB '[0-9]*' 
+                                 THEN SUBSTR(c.number, 1, INSTR(c.number || '/', '/') - 1)
+                                 ELSE c.number 
+                             END AS INTEGER
+                         ),
+                         c.number"""
+        elif sort == "name-asc":
+            # Alphabetical A-Z
+            order_by = "ORDER BY c.name ASC, c.set_id"
+        elif sort == "name-desc":
+            # Alphabetical Z-A
+            order_by = "ORDER BY c.name DESC, c.set_id"
+        else:  # "newest" is default
+            # Newest sets first, then by card number (need to join with sets to get release_date)
+            order_by = """ORDER BY (SELECT s.release_date FROM sets s WHERE s.id = c.set_id) DESC,
+                         CAST(
+                             CASE 
+                                 WHEN c.number GLOB '[0-9]*' 
+                                 THEN SUBSTR(c.number, 1, INSTR(c.number || '/', '/') - 1)
+                                 ELSE c.number 
+                             END AS INTEGER
+                         ),
+                         c.number"""
+        
         # Get cards - use DISTINCT to avoid duplicates from joins
-        # Sort by set_id and then by number numerically (extract leading digits)
         cards_query = f"""
             SELECT DISTINCT c.* FROM {table_ref} 
             {join_sql}
             WHERE {where_sql}
-            ORDER BY c.set_id, 
-                     CAST(
-                         CASE 
-                             WHEN c.number GLOB '[0-9]*' 
-                             THEN SUBSTR(c.number, 1, INSTR(c.number || '/', '/') - 1)
-                             ELSE c.number 
-                         END AS INTEGER
-                     ),
-                     c.number
+            {order_by}
             LIMIT ? OFFSET ?
         """
         cursor.execute(cards_query, params + [pageSize, offset])
