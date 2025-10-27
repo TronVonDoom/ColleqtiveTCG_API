@@ -5,7 +5,7 @@ Proxies requests to TCGCSV.com to avoid CORS issues in the browser
 from fastapi import APIRouter, HTTPException
 import httpx
 from datetime import datetime, timedelta
-from typing import Dict, Tuple, Any
+from typing import Dict, Tuple, Any, Optional
 
 # Create router for TCGplayer endpoints
 router = APIRouter(prefix="/api/tcgplayer", tags=["tcgplayer"])
@@ -112,3 +112,151 @@ async def get_tcgplayer_prices(group_id: int):
     except Exception as e:
         print(f"❌ Error fetching prices for group {group_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching prices: {str(e)}")
+
+@router.get("/check-card-mapping/{set_id}/{card_number}")
+async def check_card_mapping(set_id: str, card_number: str):
+    """
+    Check if a specific card from our database can be found in TCGplayer
+    Returns mapping status and potential matches
+    """
+    try:
+        # Load the set mapping
+        import json
+        from pathlib import Path
+        
+        mapping_path = Path(__file__).parent.parent / "data" / "pokemon" / "tcgplayer-set-mapping.json"
+        with open(mapping_path, 'r') as f:
+            set_mapping = json.load(f)
+        
+        if set_id not in set_mapping:
+            raise HTTPException(status_code=404, detail=f"Set {set_id} not mapped to TCGplayer")
+        
+        group_id = set_mapping[set_id]['tcgplayerGroupId']
+        
+        # Load card data from our database
+        cards_path = Path(__file__).parent.parent / "data" / "pokemon" / "cards" / "en" / f"{set_id}.json"
+        with open(cards_path, 'r') as f:
+            our_cards = json.load(f)
+        
+        # Find the specific card
+        our_card = next((c for c in our_cards if c.get('number') == card_number), None)
+        if not our_card:
+            raise HTTPException(status_code=404, detail=f"Card {card_number} not found in set {set_id}")
+        
+        # Fetch TCGplayer products for this set
+        tcg_products = await get_tcgplayer_products(group_id)
+        tcg_cards = tcg_products.get('results', [])
+        
+        # Normalize and search for matches
+        def normalize_name(name):
+            return name.lower().replace('-', ' ').replace("'", "").replace('.', '').strip()
+        
+        our_name_normalized = normalize_name(our_card['name'])
+        
+        # Find potential matches
+        exact_matches = [tc for tc in tcg_cards if normalize_name(tc['name']) == our_name_normalized]
+        partial_matches = [tc for tc in tcg_cards if our_name_normalized in normalize_name(tc['name']) or normalize_name(tc['name']) in our_name_normalized]
+        
+        return {
+            "set_id": set_id,
+            "card_number": card_number,
+            "card_name": our_card['name'],
+            "tcgplayer_group_id": group_id,
+            "tcgplayer_group_name": set_mapping[set_id]['tcgplayerGroupName'],
+            "mapping_status": "found" if exact_matches else "not_found",
+            "exact_matches": len(exact_matches),
+            "exact_match_details": exact_matches[:5] if exact_matches else [],
+            "partial_matches": len(partial_matches),
+            "partial_match_details": partial_matches[:5] if partial_matches else [],
+            "total_products_in_set": len(tcg_cards)
+        }
+        
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=f"Data file not found: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error checking card mapping: {str(e)}")
+
+@router.get("/unmapped-cards")
+async def get_unmapped_cards(set_id: Optional[str] = None, limit: int = 100):
+    """
+    Get a list of cards that cannot be found in TCGplayer
+    Optionally filter by set_id
+    """
+    try:
+        import json
+        from pathlib import Path
+        
+        # Load the set mapping
+        mapping_path = Path(__file__).parent.parent / "data" / "pokemon" / "tcgplayer-set-mapping.json"
+        with open(mapping_path, 'r') as f:
+            set_mapping = json.load(f)
+        
+        cards_dir = Path(__file__).parent.parent / "data" / "pokemon" / "cards" / "en"
+        
+        # Determine which sets to check
+        sets_to_check = [set_id] if set_id else list(set_mapping.keys())
+        
+        unmapped_cards = []
+        
+        for sid in sets_to_check:
+            if sid not in set_mapping:
+                continue
+            
+            cards_path = cards_dir / f"{sid}.json"
+            if not cards_path.exists():
+                continue
+            
+            with open(cards_path, 'r') as f:
+                our_cards = json.load(f)
+            
+            group_id = set_mapping[sid]['tcgplayerGroupId']
+            
+            # Fetch TCGplayer products
+            tcg_products = await get_tcgplayer_products(group_id)
+            tcg_cards = tcg_products.get('results', [])
+            
+            if not tcg_cards:
+                # If no TCGplayer products, all cards are unmapped
+                for card in our_cards:
+                    unmapped_cards.append({
+                        "set_id": sid,
+                        "set_name": set_mapping[sid]['setName'],
+                        "card_id": card['id'],
+                        "card_name": card['name'],
+                        "card_number": card.get('number'),
+                        "rarity": card.get('rarity'),
+                        "reason": "no_tcgplayer_products"
+                    })
+                continue
+            
+            # Check each card
+            def normalize_name(name):
+                return name.lower().replace('-', ' ').replace("'", "").replace('.', '').strip()
+            
+            tcg_names = {normalize_name(tc['name']) for tc in tcg_cards}
+            
+            for card in our_cards:
+                our_name = normalize_name(card['name'])
+                if our_name not in tcg_names:
+                    unmapped_cards.append({
+                        "set_id": sid,
+                        "set_name": set_mapping[sid]['setName'],
+                        "card_id": card['id'],
+                        "card_name": card['name'],
+                        "card_number": card.get('number'),
+                        "rarity": card.get('rarity'),
+                        "reason": "name_not_found"
+                    })
+            
+            # Limit results if needed
+            if len(unmapped_cards) >= limit:
+                break
+        
+        return {
+            "total_unmapped": len(unmapped_cards),
+            "limit": limit,
+            "unmapped_cards": unmapped_cards[:limit]
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching unmapped cards: {str(e)}")
