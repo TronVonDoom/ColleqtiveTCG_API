@@ -27,6 +27,9 @@ pokemontcg/pokemon-tcg-data/
 # Downloaded card images (PNG and WebP) - exclude from git (too large)
 tcg-images-download/
 
+# WebP card images - exclude from git (too large)
+tcg-images/
+
 # Image backups - exclude from git (too large)
 backups/
 
