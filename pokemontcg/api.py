@@ -9,6 +9,7 @@ import sqlite3
 import json
 from pathlib import Path
 from fastapi.responses import RedirectResponse
+from .tcgplayer_proxy import router as tcgplayer_router
 
 app = FastAPI(
     title="Pokemon TCG API",
@@ -24,6 +25,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register TCGplayer proxy router
+app.include_router(tcgplayer_router)
 
 # Database path
 DB_PATH = Path(__file__).parent / "pokemontcg.db"
