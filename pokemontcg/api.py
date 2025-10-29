@@ -256,7 +256,7 @@ async def get_cards(
     set_id: Optional[str] = Query(None, description="Filter by set ID"),
     rarity: Optional[str] = Query(None, description="Filter by rarity"),
     type: Optional[str] = Query(None, description="Filter by Pokemon type"),
-    sort: Optional[str] = Query("newest", description="Sort order: newest, oldest, name-asc, name-desc")
+    sort: Optional[str] = Query("newest", description="Sort order: newest, oldest, name-asc, name-desc, hp-asc, hp-desc, rarity-asc, rarity-desc, number-asc, number-desc")
 ):
     """Get Pokemon TCG cards with filtering and pagination"""
     try:
@@ -327,6 +327,74 @@ async def get_cards(
         elif sort == "name-desc":
             # Alphabetical Z-A
             order_by = "ORDER BY c.name DESC, c.set_id"
+        elif sort == "hp-asc":
+            # HP ascending (nulls last)
+            order_by = "ORDER BY CAST(c.hp AS INTEGER) ASC, c.hp IS NULL, c.name ASC"
+        elif sort == "hp-desc":
+            # HP descending (nulls last)
+            order_by = "ORDER BY CAST(c.hp AS INTEGER) DESC, c.hp IS NULL, c.name ASC"
+        elif sort == "rarity-asc":
+            # Rarity ascending (Common first)
+            order_by = """ORDER BY 
+                         CASE c.rarity
+                             WHEN 'Common' THEN 1
+                             WHEN 'Uncommon' THEN 2
+                             WHEN 'Rare' THEN 3
+                             WHEN 'Rare Holo' THEN 4
+                             WHEN 'Rare Holo EX' THEN 5
+                             WHEN 'Rare Holo GX' THEN 6
+                             WHEN 'Rare Holo V' THEN 7
+                             WHEN 'Rare Holo VMAX' THEN 8
+                             WHEN 'Rare Ultra' THEN 9
+                             WHEN 'Rare Secret' THEN 10
+                             WHEN 'Rare Rainbow' THEN 11
+                             WHEN 'Amazing Rare' THEN 12
+                             WHEN 'Hyper Rare' THEN 13
+                             ELSE 999
+                         END ASC,
+                         c.name ASC"""
+        elif sort == "rarity-desc":
+            # Rarity descending (Rare first)
+            order_by = """ORDER BY 
+                         CASE c.rarity
+                             WHEN 'Common' THEN 1
+                             WHEN 'Uncommon' THEN 2
+                             WHEN 'Rare' THEN 3
+                             WHEN 'Rare Holo' THEN 4
+                             WHEN 'Rare Holo EX' THEN 5
+                             WHEN 'Rare Holo GX' THEN 6
+                             WHEN 'Rare Holo V' THEN 7
+                             WHEN 'Rare Holo VMAX' THEN 8
+                             WHEN 'Rare Ultra' THEN 9
+                             WHEN 'Rare Secret' THEN 10
+                             WHEN 'Rare Rainbow' THEN 11
+                             WHEN 'Amazing Rare' THEN 12
+                             WHEN 'Hyper Rare' THEN 13
+                             ELSE 999
+                         END DESC,
+                         c.name ASC"""
+        elif sort == "number-asc":
+            # Card number ascending
+            order_by = """ORDER BY 
+                         CAST(
+                             CASE 
+                                 WHEN c.number GLOB '[0-9]*' 
+                                 THEN SUBSTR(c.number, 1, INSTR(c.number || '/', '/') - 1)
+                                 ELSE c.number 
+                             END AS INTEGER
+                         ) ASC,
+                         c.number ASC"""
+        elif sort == "number-desc":
+            # Card number descending
+            order_by = """ORDER BY 
+                         CAST(
+                             CASE 
+                                 WHEN c.number GLOB '[0-9]*' 
+                                 THEN SUBSTR(c.number, 1, INSTR(c.number || '/', '/') - 1)
+                                 ELSE c.number 
+                             END AS INTEGER
+                         ) DESC,
+                         c.number DESC"""
         else:  # "newest" is default
             # Newest sets first, then by card number (need to join with sets to get release_date)
             order_by = """ORDER BY (SELECT s.release_date FROM sets s WHERE s.id = c.set_id) DESC,
