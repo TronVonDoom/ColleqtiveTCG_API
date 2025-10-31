@@ -155,13 +155,23 @@ async def health_check():
         card_count = cursor.fetchone()[0]
         cursor.execute("SELECT COUNT(*) FROM sets")
         set_count = cursor.fetchone()[0]
+        
+        # Check if card_variants table exists and count variants
+        variant_count = 0
+        try:
+            cursor.execute("SELECT COUNT(*) FROM card_variants")
+            variant_count = cursor.fetchone()[0]
+        except:
+            variant_count = "table_not_found"
+        
         conn.close()
         
         return {
             "status": "healthy",
             "database": "connected",
             "cards": card_count,
-            "sets": set_count
+            "sets": set_count,
+            "variants": variant_count
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
