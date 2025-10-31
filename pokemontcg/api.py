@@ -492,10 +492,8 @@ async def get_cards(
             # Fetch card variants from card_variants table (if table exists)
             try:
                 cursor.execute("""
-                    SELECT id, variant_type, tcgplayer_product_id, tcgplayer_url, 
-                           market_price, low_price, mid_price, high_price, direct_low_price,
-                           cardmarket_url, cardmarket_avg_price, cardmarket_low_price, cardmarket_trend_price,
-                           is_available, last_price_update
+                    SELECT variant_type, tcgplayer_product_id,
+                           market_price, low_price, mid_price, high_price, direct_low_price
                     FROM card_variants 
                     WHERE card_id = ? 
                     ORDER BY variant_type
@@ -505,28 +503,21 @@ async def get_cards(
                     card['variants'] = []
                     for variant_row in variant_rows:
                         variant_dict = {
-                            'id': variant_row[0],
-                            'variantType': variant_row[1],
-                            'tcgplayerProductId': variant_row[2],
-                            'tcgplayerUrl': variant_row[3],
-                            'marketPrice': variant_row[4],
-                            'lowPrice': variant_row[5],
-                            'midPrice': variant_row[6],
-                            'highPrice': variant_row[7],
-                            'directLowPrice': variant_row[8],
-                            'cardmarketUrl': variant_row[9],
-                            'cardmarketAvgPrice': variant_row[10],
-                            'cardmarketLowPrice': variant_row[11],
-                            'cardmarketTrendPrice': variant_row[12],
-                            'isAvailable': variant_row[13],
-                            'lastPriceUpdate': variant_row[14]
+                            'variantType': variant_row[0],
+                            'tcgplayerProductId': variant_row[1],
+                            'marketPrice': variant_row[2],
+                            'lowPrice': variant_row[3],
+                            'midPrice': variant_row[4],
+                            'highPrice': variant_row[5],
+                            'directLowPrice': variant_row[6]
                         }
                         card['variants'].append(variant_dict)
             except Exception as e:
-                # Table might not exist yet - skip variants
                 # Log the error for debugging
                 import logging
-                logging.warning(f"Failed to fetch variants for card {card_id}: {str(e)}")
+                logging.error(f"Failed to fetch variants for card {card_id}: {str(e)}")
+                import traceback
+                logging.error(traceback.format_exc())
                 pass
             
             # Parse JSON fields from card table
