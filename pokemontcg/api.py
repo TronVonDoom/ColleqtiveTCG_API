@@ -514,6 +514,9 @@ async def get_cards(
                         card['variants'].append(variant_dict)
             except Exception as e:
                 # Table might not exist yet - skip variants
+                # Log the error for debugging
+                import logging
+                logging.warning(f"Failed to fetch variants for card {card_id}: {str(e)}")
                 pass
             
             # Parse JSON fields from card table
